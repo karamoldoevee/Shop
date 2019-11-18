@@ -6,7 +6,7 @@ from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 from webapp.forms import BasketOrderCreateForm
-from webapp.models import Product, OrderProduct, Order
+from webapp.models import Product, OrderProduct, Order, STATUS_DELIVERED, STATUS_CANCELED
 from django.contrib.auth.mixins import PermissionRequiredMixin, LoginRequiredMixin
 from django.contrib import messages
 from webapp.mixins import StatsMixin
@@ -147,6 +147,7 @@ class BasketView(StatsMixin, CreateView):
 
 
 class OrderListView(ListView):
+    model = Order
     template_name = 'order/list.html'
 
     def get_queryset(self):
@@ -155,7 +156,8 @@ class OrderListView(ListView):
         return self.request.user.orders.all().order_by('-created_at')
 
 
-class OrderDetailView(DetailView):
+class OrderDetailView(StatsMixin, DetailView):
+    model = Order
     template_name = 'order/detail.html'
 
     def get_queryset(self):
@@ -177,17 +179,50 @@ class OrderCreateView(CreateView):
 
 class OrderUpdateView(UpdateView):
     model = Order
-    pass
+    template_name = 'order/update.html'
+    fields = ('first_name', 'last_name', 'email', 'phone', 'products', 'status')
+    context_object_name = 'order'
+
+    def get_success_url(self):
+        return reverse('webapp:order_detail', kwargs={'pk': self.object.pk})
 
 
-class OrderDeliverView(View):
-    def get(self, request, *args, **kwargs):
-        pass
+class OrderDeliverView(PermissionRequiredMixin, UpdateView):
+    model = Order
+    success_url = reverse_lazy('webapp:order_detail')
+
+    def test_func(self, request, *args, **kwargs):
+        order = self.get_object().order
+        users = order.users.all()
+        if self.request.user in users:
+            return True
+        return False
+
+    def deliver(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.status = STATUS_DELIVERED
+        self.object.save()
+        return redirect(self.get_success_url())
 
 
-class OrderCancelView(View):
-    def get(self, request, *args, **kwargs):
-        pass
+class OrderCancelView(PermissionRequiredMixin, DeleteView):
+    model = Order
+    template_name = 'order/delete.html'
+    context_object_name = 'order'
+    success_url = reverse_lazy('webapp:order_detail')
+
+    def test_func(self):
+        order = self.get_object().order
+        users = order.users.all()
+        if self.request.user in users:
+            return True
+        return False
+
+    def cancel(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.object.status = STATUS_CANCELED
+        self.object.save()
+        return redirect(self.get_success_url())
 
 
 class OrderProductCreateView(CreateView):

@@ -27,6 +27,8 @@ class Product(models.Model):
             ('can_have_piece_of_pizza', 'Может съесть кусочек пиццы'),
         ]
 
+STATUS_DELIVERED = 'delivered'
+STATUS_CANCELED = 'canceled'
 
 ORDER_STATUS_CHOICES = (
     ('new', 'Новый'),
