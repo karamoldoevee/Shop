@@ -187,8 +187,10 @@ class OrderUpdateView(UpdateView):
         return reverse('webapp:order_detail', kwargs={'pk': self.object.pk})
 
 
-class OrderDeliverView(PermissionRequiredMixin, UpdateView):
+class OrderDeliverView(PermissionRequiredMixin, DeleteView):
     model = Order
+    template_name = 'order/delete.html'
+    context_object_name = 'order'
     success_url = reverse_lazy('webapp:order_detail')
 
     def test_func(self, request, *args, **kwargs):
